@@ -1,4 +1,4 @@
-# Infrastructure as Code Project
+Terragrunt workflow Project
 
 This repository contains infrastructure as code (IaC) for deploying and managing cloud resources using Terraform and Terragrunt.
 
