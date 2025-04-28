@@ -15,6 +15,6 @@ remote_state {
 
 inputs = {
   aws_region = local.aws_region
-  project    = "ha-vpc-setup"
+  project    = "terragrunt-workflow"
   environment = "production"
 }
