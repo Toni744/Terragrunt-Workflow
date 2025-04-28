@@ -8,6 +8,9 @@ on:
 
 jobs:
   terraform:
+    defaults:
+      run:
+        working-directory: $DIR_OF_CHOICE
     runs-on: ubuntu-latest
     
     steps:
