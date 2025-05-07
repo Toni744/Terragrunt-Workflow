@@ -1,0 +1,66 @@
+name: Dockerfile Security Scan
+ 
+on:
+  pull_request:
+    paths:
+      - '**/Dockerfile'
+ 
+jobs:
+  snyk-scan:
+    runs-on: ubuntu-latest
+    name: Snyk Scan Dockerfile
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      ALLOWLIST: "allowed/path/Dockerfile,another/allowed/Dockerfile"  # comma-separated allowlist paths
+ 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+ 
+      - name: Find changed Dockerfiles
+        id: dockerfiles
+        run: |
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...${{ github.sha }} | grep Dockerfile || true)
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+ 
+      - name: Validate and scan Dockerfiles
+        if: steps.dockerfiles.outputs.changed_files != ''
+        run: |
+          IFS=$'\n'
+          failed=0
+          for file in ${{ steps.dockerfiles.outputs.changed_files }}; do
+            echo "🔍 Checking $file"
+ 
+            # Check for allowlist
+            if echo "$ALLOWLIST" | grep -q "$file"; then
+              echo "⚠️ $file is in the allowlist – skipping blocking scan"
+              continue
+            fi
+ 
+            # Ensure exactly one FROM line
+            from_lines=$(grep -c '^FROM ' "$file")
+            if [ "$from_lines" -ne 1 ]; then
+              echo "❌ $file must contain exactly one FROM statement"
+              failed=1
+              continue
+            fi
+ 
+            # Extract image from FROM line
+            image=$(grep '^FROM ' "$file" | awk '{print $2}')
+            echo "🔎 Scanning image: $image"
+ 
+            # Authenticate and scan image
+            snyk auth "$SNYK_TOKEN"
+            snyk test --docker "$image" || failed=1
+          done
+ 
+          if [ "$failed" -ne 0 ]; then
+            echo "❌ One or more Dockerfiles failed the scan."
+            exit 1
+          else
+            echo "✅ All Dockerfiles passed the scan."
+          fi
+ 
+      - name: Fail if no Dockerfiles found
+        if: steps.dockerfiles.outputs.changed_files == ''
+        run: echo "No Dockerfiles found in PR. Skipping scan."
