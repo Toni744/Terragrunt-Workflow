@@ -1,9 +1,15 @@
 name: Dockerfile Security Scan
- 
+
 on:
+  push:
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
     paths:
       - '**/Dockerfile'
+ 
  
 jobs:
   snyk-scan:
